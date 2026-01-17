@@ -1,0 +1,64 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { User, Mic, Video } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+
+export default function UserMenu() {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const menuItems = [
+    { icon: User, label: "Account" },
+    { icon: Mic, label: "Configure Audio" },
+    { icon: Video, label: "Configure Video" },
+  ];
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <motion.button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-8 h-8 rounded-full bg-white flex items-center justify-center"
+        whileTap={{ scale: 0.97 }}
+      >
+        <User className="w-4 h-4 text-[#121212]" />
+      </motion.button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="absolute right-0 top-full mt-2 p-1 bg-[#1E1E1E] border border-[#252525] rounded-xl shadow-[0px_7px_16px_rgba(0,0,0,0.14)]"
+          >
+            <div className="flex flex-col gap-0.5">
+              {menuItems.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-1 px-1.5 py-1.5 w-[218px] rounded-lg hover:bg-[#2B2B2B] transition-colors"
+                >
+                  <item.icon className="w-4 h-4 text-white/30" />
+                  <span className="text-white/30 text-xs">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
