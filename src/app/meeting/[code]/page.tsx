@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, use, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useState, use, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -23,61 +23,60 @@ interface PageProps {
 
 export default function MeetingPage({ params }: PageProps) {
   const { code } = use(params);
-  const searchParams = useSearchParams();
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [wsUrl, setWsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isConnecting, setIsConnecting] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
   const [initialAudioEnabled, setInitialAudioEnabled] = useState(true);
   const [initialVideoEnabled, setInitialVideoEnabled] = useState(true);
+  const [participantName, setParticipantName] = useState("");
 
-  const participantName = searchParams.get("name") || "Guest";
+  const handleBack = useCallback(() => {
+    router.push("/");
+  }, [router]);
 
-  useEffect(() => {
-    const getToken = async () => {
-      try {
-        const response = await fetch("/api/token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            roomName: code,
-            participantName,
-          }),
-        });
+  const handleJoin = useCallback(async (name: string, audioEnabled: boolean, videoEnabled: boolean) => {
+    setParticipantName(name);
+    setInitialAudioEnabled(audioEnabled);
+    setInitialVideoEnabled(videoEnabled);
+    setIsConnecting(true);
+    setError(null);
 
-        const data = await response.json();
+    try {
+      const response = await fetch("/api/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          roomName: code,
+          participantName: name,
+        }),
+      });
 
-        if (data.error) {
-          setError(data.error);
-          setIsConnecting(false);
-          return;
-        }
+      const data = await response.json();
 
-        setToken(data.token);
-        setWsUrl(data.wsUrl);
+      if (data.error) {
+        setError(data.error);
         setIsConnecting(false);
-      } catch {
-        setError("Failed to connect to the meeting. Please try again.");
-        setIsConnecting(false);
+        return;
       }
-    };
 
-    getToken();
-  }, [code, participantName]);
+      setToken(data.token);
+      setWsUrl(data.wsUrl);
+      setIsConnecting(false);
+      setHasJoined(true);
+    } catch {
+      setError("Failed to connect to the meeting. Please try again.");
+      setIsConnecting(false);
+    }
+  }, [code]);
 
   const handleDisconnect = () => {
     router.push("/");
   };
-
-  const handleJoin = useCallback((audioEnabled: boolean, videoEnabled: boolean) => {
-    setInitialAudioEnabled(audioEnabled);
-    setInitialVideoEnabled(videoEnabled);
-    setHasJoined(true);
-  }, []);
 
   // Room options to set initial audio/video state
   const roomOptions: RoomOptions = {
@@ -89,59 +88,59 @@ export default function MeetingPage({ params }: PageProps) {
     },
   };
 
-  if (isConnecting) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-purple-500 animate-spin mx-auto mb-4" />
-          <p className="text-white text-lg">Connecting to meeting...</p>
-          <p className="text-gray-400 text-sm mt-2">Meeting code: {code}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-red-400" />
+  // Show pre-join screen before connecting to the room
+  if (!hasJoined) {
+    if (isConnecting) {
+      return (
+        <div className="min-h-screen bg-[#121212] flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 text-white animate-spin mx-auto mb-4" />
+            <p className="text-white text-lg">Connecting to meeting...</p>
+            <p className="text-white/30 text-sm mt-2">Meeting code: {code}</p>
           </div>
-          <h2 className="text-xl font-semibold text-white mb-2">
-            Connection Error
-          </h2>
-          <p className="text-gray-400 mb-6">{error}</p>
-          <button
-            onClick={() => router.push("/")}
-            className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-all"
-          >
-            Return Home
-          </button>
         </div>
-      </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="min-h-screen bg-[#121212] flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-4">
+            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-white mb-2">
+              Connection Error
+            </h2>
+            <p className="text-white/30 mb-6">{error}</p>
+            <button
+              onClick={() => router.push("/")}
+              className="px-6 py-3 bg-white hover:bg-white/90 text-black font-medium rounded-lg transition-all"
+            >
+              Return Home
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <PreJoinScreen
+        meetingCode={code}
+        onJoin={handleJoin}
+        onBack={handleBack}
+      />
     );
   }
 
   if (!token || !wsUrl) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
           <p className="text-white text-lg">Missing connection details</p>
         </div>
       </div>
-    );
-  }
-
-  // Show pre-join screen before connecting to the room
-  if (!hasJoined) {
-    return (
-      <PreJoinScreen
-        meetingCode={code}
-        participantName={participantName}
-        onJoin={handleJoin}
-      />
     );
   }
 

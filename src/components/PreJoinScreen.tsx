@@ -9,24 +9,28 @@ import {
   AlertCircle,
   Loader2,
   ArrowRight,
+  ChevronDown,
+  ArrowLeft,
 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 type PermissionStatus = "pending" | "granted" | "denied" | "error";
 
 interface PreJoinScreenProps {
   meetingCode: string;
-  participantName: string;
-  onJoin: (audioEnabled: boolean, videoEnabled: boolean) => void;
+  onJoin: (name: string, audioEnabled: boolean, videoEnabled: boolean) => void;
+  onBack: () => void;
 }
 
 export default function PreJoinScreen({
   meetingCode,
-  participantName,
   onJoin,
+  onBack,
 }: PreJoinScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  const [name, setName] = useState("");
   const [permissionStatus, setPermissionStatus] =
     useState<PermissionStatus>("pending");
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -123,22 +127,33 @@ export default function PreJoinScreen({
   };
 
   const handleJoin = () => {
+    if (!name.trim()) return;
     // Stop the preview stream before joining
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
     }
-    onJoin(audioEnabled, videoEnabled);
+    onJoin(name.trim(), audioEnabled, videoEnabled);
   };
+
+  // Format meeting code with dashes for display
+  const formatMeetingCode = (code: string) => {
+    if (code.length === 10) {
+      return `${code.slice(0, 3)}-${code.slice(3, 7)}-${code.slice(7)}`;
+    }
+    return code;
+  };
+
+  const isJoinEnabled = name.trim().length > 0;
 
   if (permissionStatus === "pending") {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
-          <Loader2 className="w-12 h-12 text-purple-500 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 text-white animate-spin mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-white mb-2">
             Requesting Access
           </h2>
-          <p className="text-gray-400">
+          <p className="text-white/30">
             Please allow access to your camera and microphone to join the
             meeting.
           </p>
@@ -149,7 +164,7 @@ export default function PreJoinScreen({
 
   if (permissionStatus === "denied" || permissionStatus === "error") {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[#121212] flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
           <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-red-400" />
@@ -159,17 +174,17 @@ export default function PreJoinScreen({
               ? "Permission Denied"
               : "Device Error"}
           </h2>
-          <p className="text-gray-400 mb-6">{errorMessage}</p>
+          <p className="text-white/30 mb-6">{errorMessage}</p>
           <div className="flex flex-col gap-3">
             <button
               onClick={requestPermissions}
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-all"
+              className="px-6 py-3 bg-white hover:bg-white/90 text-black font-medium rounded-lg transition-all"
             >
               Try Again
             </button>
             <button
-              onClick={() => window.history.back()}
-              className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl transition-all"
+              onClick={onBack}
+              className="px-6 py-3 bg-white/10 hover:bg-white/15 text-white font-medium rounded-lg transition-all"
             >
               Go Back
             </button>
@@ -180,110 +195,141 @@ export default function PreJoinScreen({
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">
-            Ready to join?
-          </h1>
-          <p className="text-gray-400">
-            Meeting code: <span className="font-mono text-purple-400">{meetingCode}</span>
-          </p>
-        </div>
+    <div className="min-h-screen bg-[#121212] flex flex-col items-center justify-center p-4">
+      {/* Back Button */}
+      <motion.button
+        onClick={onBack}
+        className="absolute top-5 left-7 p-3 rounded-lg hover:bg-white/5 transition-colors"
+        whileTap={{ scale: 0.95 }}
+      >
+        <ArrowLeft className="w-5 h-5 text-white" />
+      </motion.button>
 
-        {/* Video Preview */}
-        <div className="relative aspect-video bg-slate-800 rounded-2xl overflow-hidden mb-6 border border-white/10">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className={`w-full h-full object-cover ${
-              videoEnabled ? "" : "hidden"
-            }`}
-          />
-          {!videoEnabled && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-24 h-24 bg-slate-700 rounded-full flex items-center justify-center">
-                <span className="text-3xl font-semibold text-white">
-                  {participantName.charAt(0).toUpperCase()}
-                </span>
-              </div>
+      {/* Video Preview */}
+      <div className="relative w-[580px] h-[325px] bg-[#535353] rounded-xl overflow-hidden mb-6">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className={`w-full h-full object-cover scale-x-[-1] ${videoEnabled ? "" : "hidden"}`}
+        />
+        {!videoEnabled && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-24 h-24 bg-[#3a3a3a] rounded-full flex items-center justify-center">
+              <span className="text-3xl font-semibold text-white">
+                {name.trim() ? name.charAt(0).toUpperCase() : "?"}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Status Indicators */}
+        <div className="absolute top-4 right-4 flex gap-2">
+          {!audioEnabled && (
+            <div className="p-2 bg-red-500/20 rounded-lg">
+              <MicOff className="w-4 h-4 text-red-400" />
             </div>
           )}
-
-          {/* Name Badge */}
-          <div className="absolute bottom-4 left-4 px-3 py-1.5 bg-slate-900/80 backdrop-blur-sm rounded-lg">
-            <span className="text-white text-sm font-medium">
-              {participantName}
-            </span>
-          </div>
-
-          {/* Status Indicators */}
-          <div className="absolute top-4 right-4 flex gap-2">
-            {!audioEnabled && (
-              <div className="p-2 bg-red-500/20 rounded-lg">
-                <MicOff className="w-4 h-4 text-red-400" />
-              </div>
-            )}
-            {!videoEnabled && (
-              <div className="p-2 bg-red-500/20 rounded-lg">
-                <VideoOff className="w-4 h-4 text-red-400" />
-              </div>
-            )}
-          </div>
+          {!videoEnabled && (
+            <div className="p-2 bg-red-500/20 rounded-lg">
+              <VideoOff className="w-4 h-4 text-red-400" />
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-4 mb-8">
-          <button
-            onClick={toggleAudio}
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all ${
-              audioEnabled
-                ? "bg-white/10 hover:bg-white/20 text-white"
-                : "bg-red-500/20 hover:bg-red-500/30 text-red-400"
-            }`}
-          >
-            {audioEnabled ? (
-              <Mic className="w-5 h-5" />
-            ) : (
-              <MicOff className="w-5 h-5" />
-            )}
-            <span className="font-medium">
-              {audioEnabled ? "Mute" : "Unmute"}
-            </span>
-          </button>
+      {/* Meeting Code */}
+      <div className="flex items-center gap-1 mb-6">
+        <span className="text-white/30 text-base">meeting code:</span>
+        <span className="text-white text-base">{formatMeetingCode(meetingCode)}</span>
+      </div>
 
-          <button
+      {/* Device Selectors */}
+      <div className="flex items-center gap-9 mb-6">
+        {/* Camera Selector */}
+        <div className="flex items-center gap-1">
+          <motion.button
             onClick={toggleVideo}
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all ${
-              videoEnabled
-                ? "bg-white/10 hover:bg-white/20 text-white"
-                : "bg-red-500/20 hover:bg-red-500/30 text-red-400"
-            }`}
+            className="flex items-center justify-center w-10 h-10 rounded-xl transition-colors"
+            style={{ opacity: 0.3 }}
+            whileTap={{ scale: 0.95 }}
           >
             {videoEnabled ? (
-              <Video className="w-5 h-5" />
+              <Video className="w-6 h-6 text-white" />
             ) : (
-              <VideoOff className="w-5 h-5" />
+              <VideoOff className="w-6 h-6 text-white" />
             )}
-            <span className="font-medium">
-              {videoEnabled ? "Stop Video" : "Start Video"}
-            </span>
-          </button>
+          </motion.button>
+          <div className="flex items-center gap-0.5 opacity-30">
+            <span className="text-white text-base">System default</span>
+            <ChevronDown className="w-4 h-4 text-white" />
+          </div>
         </div>
 
-        {/* Join Button */}
-        <div className="flex justify-center">
-          <button
-            onClick={handleJoin}
-            className="flex items-center gap-2 px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl transition-all text-lg"
+        {/* Mic Selector */}
+        <div className="flex items-center gap-1">
+          <motion.button
+            onClick={toggleAudio}
+            className="flex items-center justify-center w-10 h-10 rounded-xl transition-colors"
+            style={{ opacity: 0.3 }}
+            whileTap={{ scale: 0.95 }}
           >
-            Join Now
-            <ArrowRight className="w-5 h-5" />
-          </button>
+            {audioEnabled ? (
+              <Mic className="w-6 h-6 text-white" />
+            ) : (
+              <MicOff className="w-6 h-6 text-white" />
+            )}
+          </motion.button>
+          <div className="flex items-center gap-0.5 opacity-30">
+            <span className="text-white text-base">System default</span>
+            <ChevronDown className="w-4 h-4 text-white" />
+          </div>
         </div>
+      </div>
+
+      {/* Name Input and Join Button */}
+      <div className="flex items-center gap-3">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="enter your name"
+          className="w-52 h-11 px-3 bg-[#232323] border border-white/5 rounded-lg text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors text-base"
+          onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+          autoFocus
+        />
+        <motion.button
+          onClick={handleJoin}
+          disabled={!isJoinEnabled}
+          className={`h-11 px-6 flex items-center justify-center gap-1 rounded-lg transition-colors font-semibold text-base ${
+            isJoinEnabled
+              ? "bg-white hover:bg-white/90 text-black"
+              : "bg-[#232323] border border-white/5"
+          }`}
+          whileTap={isJoinEnabled ? { scale: 0.97 } : undefined}
+          initial={{ gap: 4 }}
+          whileHover={isJoinEnabled ? { gap: 8 } : { gap: 4 }}
+          transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+        >
+          <span className={isJoinEnabled ? "text-black" : "text-[#5D5D5D]"}>Join</span>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key="arrow"
+              className="flex items-center justify-center"
+              variants={{
+                initial: { x: 0 },
+                hover: { x: 2 },
+              }}
+              transition={{ duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
+            >
+              <ArrowRight
+                className={`w-5 h-5 ${isJoinEnabled ? "text-black" : "text-[#5D5D5D]"}`}
+                strokeWidth={2.5}
+              />
+            </motion.span>
+          </AnimatePresence>
+        </motion.button>
       </div>
     </div>
   );
