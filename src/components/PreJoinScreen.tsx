@@ -11,10 +11,16 @@ import {
   ArrowRight,
   ChevronDown,
   ArrowLeft,
+  Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 type PermissionStatus = "pending" | "granted" | "denied" | "error";
+
+interface DeviceInfo {
+  deviceId: string;
+  label: string;
+}
 
 interface PreJoinScreenProps {
   meetingCode: string;
@@ -29,6 +35,8 @@ export default function PreJoinScreen({
 }: PreJoinScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const cameraDropdownRef = useRef<HTMLDivElement>(null);
+  const micDropdownRef = useRef<HTMLDivElement>(null);
 
   const [name, setName] = useState("");
   const [permissionStatus, setPermissionStatus] =
@@ -36,6 +44,14 @@ export default function PreJoinScreen({
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Device selection state
+  const [videoDevices, setVideoDevices] = useState<DeviceInfo[]>([]);
+  const [audioDevices, setAudioDevices] = useState<DeviceInfo[]>([]);
+  const [selectedVideoDevice, setSelectedVideoDevice] = useState<string>("");
+  const [selectedAudioDevice, setSelectedAudioDevice] = useState<string>("");
+  const [cameraDropdownOpen, setCameraDropdownOpen] = useState(false);
+  const [micDropdownOpen, setMicDropdownOpen] = useState(false);
 
   useEffect(() => {
     requestPermissions();
@@ -47,6 +63,108 @@ export default function PreJoinScreen({
       }
     };
   }, []);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cameraDropdownRef.current && !cameraDropdownRef.current.contains(event.target as Node)) {
+        setCameraDropdownOpen(false);
+      }
+      if (micDropdownRef.current && !micDropdownRef.current.contains(event.target as Node)) {
+        setMicDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const enumerateDevices = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      
+      const videoInputs = devices
+        .filter((d) => d.kind === "videoinput")
+        .map((d, i) => ({
+          deviceId: d.deviceId,
+          label: d.label || `Camera ${i + 1}`,
+        }));
+      
+      const audioInputs = devices
+        .filter((d) => d.kind === "audioinput")
+        .map((d, i) => ({
+          deviceId: d.deviceId,
+          label: d.label || `Microphone ${i + 1}`,
+        }));
+
+      setVideoDevices(videoInputs);
+      setAudioDevices(audioInputs);
+
+      // Set default selected devices from current stream
+      if (streamRef.current) {
+        const videoTrack = streamRef.current.getVideoTracks()[0];
+        const audioTrack = streamRef.current.getAudioTracks()[0];
+        
+        if (videoTrack) {
+          const settings = videoTrack.getSettings();
+          setSelectedVideoDevice(settings.deviceId || videoInputs[0]?.deviceId || "");
+        }
+        if (audioTrack) {
+          const settings = audioTrack.getSettings();
+          setSelectedAudioDevice(settings.deviceId || audioInputs[0]?.deviceId || "");
+        }
+      }
+    } catch (error) {
+      console.error("Error enumerating devices:", error);
+    }
+  };
+
+  const switchDevice = async (type: "video" | "audio", deviceId: string) => {
+    if (!streamRef.current) return;
+
+    try {
+      if (type === "video") {
+        // Stop current video track
+        const currentVideoTrack = streamRef.current.getVideoTracks()[0];
+        if (currentVideoTrack) {
+          currentVideoTrack.stop();
+          streamRef.current.removeTrack(currentVideoTrack);
+        }
+
+        // Get new video track
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: deviceId } },
+        });
+        const newVideoTrack = newStream.getVideoTracks()[0];
+        newVideoTrack.enabled = videoEnabled;
+        streamRef.current.addTrack(newVideoTrack);
+        setSelectedVideoDevice(deviceId);
+
+        // Update video element
+        if (videoRef.current) {
+          videoRef.current.srcObject = streamRef.current;
+        }
+      } else {
+        // Stop current audio track
+        const currentAudioTrack = streamRef.current.getAudioTracks()[0];
+        if (currentAudioTrack) {
+          currentAudioTrack.stop();
+          streamRef.current.removeTrack(currentAudioTrack);
+        }
+
+        // Get new audio track
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          audio: { deviceId: { exact: deviceId } },
+        });
+        const newAudioTrack = newStream.getAudioTracks()[0];
+        newAudioTrack.enabled = audioEnabled;
+        streamRef.current.addTrack(newAudioTrack);
+        setSelectedAudioDevice(deviceId);
+      }
+    } catch (error) {
+      console.error(`Error switching ${type} device:`, error);
+    }
+  };
 
   const requestPermissions = async () => {
     setPermissionStatus("pending");
@@ -65,6 +183,9 @@ export default function PreJoinScreen({
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
+
+      // Enumerate available devices
+      await enumerateDevices();
     } catch (error) {
       console.error("Permission error:", error);
 
@@ -145,6 +266,16 @@ export default function PreJoinScreen({
 
   const isJoinEnabled = name.trim().length > 0;
 
+  const getSelectedVideoLabel = () => {
+    const device = videoDevices.find((d) => d.deviceId === selectedVideoDevice);
+    return device?.label || "Select camera";
+  };
+
+  const getSelectedAudioLabel = () => {
+    const device = audioDevices.find((d) => d.deviceId === selectedAudioDevice);
+    return device?.label || "Select microphone";
+  };
+
   if (permissionStatus === "pending") {
     return (
       <div className="min-h-screen bg-[#121212] flex items-center justify-center">
@@ -205,6 +336,12 @@ export default function PreJoinScreen({
         <ArrowLeft className="w-5 h-5 text-white" />
       </motion.button>
 
+      {/* Meeting Code */}
+      <div className="flex items-center gap-1 mb-6">
+        <span className="text-white/30 text-base">meeting code:</span>
+        <span className="text-white text-base">{formatMeetingCode(meetingCode)}</span>
+      </div>
+
       {/* Video Preview */}
       <div className="relative w-[580px] h-[325px] bg-[#535353] rounded-xl overflow-hidden mb-6">
         <video
@@ -239,57 +376,123 @@ export default function PreJoinScreen({
         </div>
       </div>
 
-      {/* Meeting Code */}
-      <div className="flex items-center gap-1 mb-6">
-        <span className="text-white/30 text-base">meeting code:</span>
-        <span className="text-white text-base">{formatMeetingCode(meetingCode)}</span>
-      </div>
-
       {/* Device Selectors */}
       <div className="flex items-center gap-9 mb-6">
         {/* Camera Selector */}
-        <div className="flex items-center gap-1">
+        <div className="relative flex items-center gap-1" ref={cameraDropdownRef}>
           <motion.button
             onClick={toggleVideo}
-            className="flex items-center justify-center w-10 h-10 rounded-xl transition-colors"
-            style={{ opacity: 0.3 }}
+            className="p-3 rounded-lg hover:bg-white/5 transition-colors"
             whileTap={{ scale: 0.95 }}
           >
             {videoEnabled ? (
-              <Video className="w-6 h-6 text-white" />
+              <Video className="w-5 h-5 text-white opacity-30" />
             ) : (
-              <VideoOff className="w-6 h-6 text-white" />
+              <VideoOff className="w-5 h-5 text-white opacity-30" />
             )}
           </motion.button>
-          <div className="flex items-center gap-0.5 opacity-30">
-            <span className="text-white text-base">System default</span>
-            <ChevronDown className="w-4 h-4 text-white" />
-          </div>
+          <motion.button
+            onClick={() => setCameraDropdownOpen(!cameraDropdownOpen)}
+            className="flex items-center gap-0.5 p-2 rounded-lg hover:bg-white/5 transition-colors"
+            whileTap={{ scale: 0.95 }}
+          >
+            <span className="text-white/30 text-base max-w-[140px] truncate">
+              {getSelectedVideoLabel()}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-white/30 transition-transform ${cameraDropdownOpen ? "rotate-180" : ""}`} />
+          </motion.button>
+
+          <AnimatePresence>
+            {cameraDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+                style={{ transformOrigin: "top left" }}
+                className="absolute left-0 top-full mt-2 p-1 bg-[#1E1E1E] border border-[#252525] rounded-xl shadow-[0px_7px_16px_rgba(0,0,0,0.14)] z-50"
+              >
+                <div className="flex flex-col gap-0.5">
+                  {videoDevices.map((device) => (
+                    <button
+                      key={device.deviceId}
+                      onClick={() => {
+                        switchDevice("video", device.deviceId);
+                        setCameraDropdownOpen(false);
+                      }}
+                      className="flex items-center justify-between gap-3 px-2 py-1.5 min-w-[200px] rounded-lg hover:bg-[#2B2B2B] transition-colors"
+                    >
+                      <span className="text-white/30 text-xs truncate">{device.label}</span>
+                      {device.deviceId === selectedVideoDevice && (
+                        <Check className="w-4 h-4 text-white/30 flex-shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Mic Selector */}
-        <div className="flex items-center gap-1">
+        <div className="relative flex items-center gap-1" ref={micDropdownRef}>
           <motion.button
             onClick={toggleAudio}
-            className="flex items-center justify-center w-10 h-10 rounded-xl transition-colors"
-            style={{ opacity: 0.3 }}
+            className="p-3 rounded-lg hover:bg-white/5 transition-colors"
             whileTap={{ scale: 0.95 }}
           >
             {audioEnabled ? (
-              <Mic className="w-6 h-6 text-white" />
+              <Mic className="w-5 h-5 text-white opacity-30" />
             ) : (
-              <MicOff className="w-6 h-6 text-white" />
+              <MicOff className="w-5 h-5 text-white opacity-30" />
             )}
           </motion.button>
-          <div className="flex items-center gap-0.5 opacity-30">
-            <span className="text-white text-base">System default</span>
-            <ChevronDown className="w-4 h-4 text-white" />
-          </div>
+          <motion.button
+            onClick={() => setMicDropdownOpen(!micDropdownOpen)}
+            className="flex items-center gap-0.5 p-2 rounded-lg hover:bg-white/5 transition-colors"
+            whileTap={{ scale: 0.95 }}
+          >
+            <span className="text-white/30 text-base max-w-[140px] truncate">
+              {getSelectedAudioLabel()}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-white/30 transition-transform ${micDropdownOpen ? "rotate-180" : ""}`} />
+          </motion.button>
+
+          <AnimatePresence>
+            {micDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+                style={{ transformOrigin: "top left" }}
+                className="absolute left-0 top-full mt-2 p-1 bg-[#1E1E1E] border border-[#252525] rounded-xl shadow-[0px_7px_16px_rgba(0,0,0,0.14)] z-50"
+              >
+                <div className="flex flex-col gap-0.5">
+                  {audioDevices.map((device) => (
+                    <button
+                      key={device.deviceId}
+                      onClick={() => {
+                        switchDevice("audio", device.deviceId);
+                        setMicDropdownOpen(false);
+                      }}
+                      className="flex items-center justify-between gap-3 px-2 py-1.5 min-w-[200px] rounded-lg hover:bg-[#2B2B2B] transition-colors"
+                    >
+                      <span className="text-white/30 text-xs truncate">{device.label}</span>
+                      {device.deviceId === selectedAudioDevice && (
+                        <Check className="w-4 h-4 text-white/30 flex-shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
       {/* Name Input and Join Button */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <input
           type="text"
           value={name}
