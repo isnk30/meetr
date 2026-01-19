@@ -368,16 +368,47 @@ export default function PreJoinScreen({
           </div>
         )}
 
-        {/* Status Indicators */}
-        <div className="absolute top-4 right-4 flex gap-2">
+        {/* Name Badge and Status Indicators - Bottom Overlay */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-[2px]">
+          {/* Name Badge */}
+          <div 
+            className="flex items-center justify-center px-2.5 h-8 rounded-xl border border-white/[0.05]"
+            style={{ 
+              backgroundColor: "rgba(30, 30, 30, 0.4)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)"
+            }}
+          >
+            <span className="text-[15px] text-white/90 font-normal">
+              {name.trim() || "Name"}
+            </span>
+          </div>
+
+          {/* Mic Status */}
           {!audioEnabled && (
-            <div className="p-2 bg-red-500/20 rounded-lg">
-              <MicOff className="w-4 h-4 text-red-400" />
+            <div 
+              className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
+              style={{ 
+                backgroundColor: "rgba(30, 30, 30, 0.4)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)"
+              }}
+            >
+              <MicOff className="w-[14px] h-[14px] text-white/90" />
             </div>
           )}
+
+          {/* Camera Status */}
           {!videoEnabled && (
-            <div className="p-2 bg-red-500/20 rounded-lg">
-              <VideoOff className="w-4 h-4 text-red-400" />
+            <div 
+              className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
+              style={{ 
+                backgroundColor: "rgba(30, 30, 30, 0.4)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)"
+              }}
+            >
+              <VideoOff className="w-[14px] h-[14px] text-white/90" />
             </div>
           )}
         </div>
