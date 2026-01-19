@@ -64,6 +64,13 @@ export default function PreJoinScreen({
     };
   }, []);
 
+  // Attach stream to video element when permissions are granted
+  useEffect(() => {
+    if (permissionStatus === "granted" && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [permissionStatus]);
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
