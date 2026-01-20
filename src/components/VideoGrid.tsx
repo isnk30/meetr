@@ -6,7 +6,7 @@ import {
   isTrackReference,
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
-import { Mic, MicOff, VideoOff } from "lucide-react";
+import { MicOff, VideoOff } from "lucide-react";
 
 interface VideoGridProps {
   tracks: TrackReferenceOrPlaceholder[];
@@ -66,48 +66,71 @@ function ParticipantTile({ track }: ParticipantTileProps) {
   const participant = track.participant;
   const isScreenShare = track.source === Track.Source.ScreenShare;
   const isMicEnabled = participant.isMicrophoneEnabled;
+  const isCameraEnabled = participant.isCameraEnabled;
   const hasVideo = isTrackReference(track) && track.publication?.track != null;
 
   return (
-    <div className="relative bg-slate-800 rounded-xl overflow-hidden">
+    <div className="relative bg-[#535353] rounded-xl overflow-hidden">
       {hasVideo && isTrackReference(track) ? (
-        <VideoTrack trackRef={track} className="w-full h-full object-cover" />
+        <VideoTrack 
+          trackRef={track} 
+          className={`w-full h-full object-cover ${!isScreenShare ? "scale-x-[-1]" : ""}`} 
+        />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-800">
-          <div className="w-20 h-20 bg-purple-500/30 rounded-full flex items-center justify-center">
-            <span className="text-3xl font-bold text-purple-300">
+        <div className="absolute inset-0 flex items-center justify-center bg-[#535353]">
+          <div className="w-20 h-20 bg-[#3a3a3a] rounded-full flex items-center justify-center">
+            <span className="text-3xl font-semibold text-white">
               {participant.name?.charAt(0).toUpperCase() || "?"}
             </span>
           </div>
         </div>
       )}
 
-      {/* Overlay with participant info */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-white text-sm font-medium truncate">
-              {isScreenShare
-                ? `${participant.name}'s screen`
-                : participant.name || participant.identity}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            {!isScreenShare && (
-              <div
-                className={`p-1 rounded ${
-                  isMicEnabled ? "bg-white/20" : "bg-red-500/50"
-                }`}
-              >
-                {isMicEnabled ? (
-                  <Mic className="w-3 h-3 text-white" />
-                ) : (
-                  <MicOff className="w-3 h-3 text-red-300" />
-                )}
-              </div>
-            )}
-          </div>
+      {/* Name Badge and Status Indicators - Bottom Overlay */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-[2px]">
+        {/* Name Badge */}
+        <div 
+          className="flex items-center justify-center px-2.5 h-8 rounded-xl border border-white/[0.05]"
+          style={{ 
+            backgroundColor: "rgba(30, 30, 30, 0.4)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)"
+          }}
+        >
+          <span className="text-[15px] text-white/90 font-normal">
+            {isScreenShare
+              ? `${participant.name}'s screen`
+              : participant.name || participant.identity}
+          </span>
         </div>
+
+        {/* Mic Status */}
+        {!isScreenShare && !isMicEnabled && (
+          <div 
+            className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
+            style={{ 
+              backgroundColor: "rgba(30, 30, 30, 0.4)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)"
+            }}
+          >
+            <MicOff className="w-[14px] h-[14px] text-white/90" />
+          </div>
+        )}
+
+        {/* Camera Status */}
+        {!isScreenShare && !isCameraEnabled && (
+          <div 
+            className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
+            style={{ 
+              backgroundColor: "rgba(30, 30, 30, 0.4)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)"
+            }}
+          >
+            <VideoOff className="w-[14px] h-[14px] text-white/90" />
+          </div>
+        )}
       </div>
 
       {/* Speaking Indicator */}

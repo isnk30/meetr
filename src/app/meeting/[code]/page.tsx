@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, use, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, use, useCallback, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -16,6 +16,7 @@ import ParticipantsList from "@/components/ParticipantsList";
 import ChatPanel from "@/components/ChatPanel";
 import VideoGrid from "@/components/VideoGrid";
 import PreJoinScreen from "@/components/PreJoinScreen";
+import UserMenu from "@/components/UserMenu";
 
 interface PageProps {
   params: Promise<{ code: string }>;
@@ -24,6 +25,9 @@ interface PageProps {
 export default function MeetingPage({ params }: PageProps) {
   const { code } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isNewMeeting = searchParams.get("new") === "true";
+  const [meetingName, setMeetingName] = useState("");
   const [token, setToken] = useState<string | null>(null);
   const [wsUrl, setWsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,10 +41,13 @@ export default function MeetingPage({ params }: PageProps) {
     router.push("/");
   }, [router]);
 
-  const handleJoin = useCallback(async (name: string, audioEnabled: boolean, videoEnabled: boolean) => {
+  const handleJoin = useCallback(async (name: string, audioEnabled: boolean, videoEnabled: boolean, meetingTitle?: string) => {
     setParticipantName(name);
     setInitialAudioEnabled(audioEnabled);
     setInitialVideoEnabled(videoEnabled);
+    if (meetingTitle) {
+      setMeetingName(meetingTitle);
+    }
     setIsConnecting(true);
     setError(null);
 
@@ -127,6 +134,7 @@ export default function MeetingPage({ params }: PageProps) {
     return (
       <PreJoinScreen
         meetingCode={code}
+        isNewMeeting={isNewMeeting}
         onJoin={handleJoin}
         onBack={handleBack}
       />
@@ -154,18 +162,19 @@ export default function MeetingPage({ params }: PageProps) {
       audio={initialAudioEnabled}
       onDisconnected={handleDisconnect}
       data-lk-theme="default"
-      className="min-h-screen bg-slate-900"
+      className="min-h-screen bg-[#121212]"
     >
-      <MeetingRoomContent meetingCode={code} />
+      <MeetingRoomContent meetingCode={code} meetingName={meetingName} />
       <RoomAudioRenderer />
     </LiveKitRoom>
   );
 }
 
-function MeetingRoomContent({ meetingCode }: { meetingCode: string }) {
+function MeetingRoomContent({ meetingCode, meetingName }: { meetingCode: string; meetingName: string }) {
   const room = useRoomContext();
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   const tracks = useTracks(
     [
@@ -175,33 +184,54 @@ function MeetingRoomContent({ meetingCode }: { meetingCode: string }) {
     { onlySubscribed: false }
   );
 
+  // Meeting timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedTime((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) {
+      return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    }
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col bg-[#121212]">
       {/* Header */}
-      <header className="h-16 bg-slate-800/50 border-b border-white/10 flex items-center justify-between px-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-white font-semibold">Meetr</h1>
-          <span className="text-gray-400">|</span>
-          <span className="text-gray-300 text-sm font-mono">{meetingCode}</span>
+      <header className="relative h-16 flex items-center justify-between px-6">
+        {/* Timer - Left */}
+        <div className="flex items-center">
+          <span className="text-white text-sm font-regular opacity-30 hover:opacity-100 transition-opacity">{formatTime(elapsedTime)}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400 text-sm">
-            {room.numParticipants} participant
-            {room.numParticipants !== 1 ? "s" : ""}
-          </span>
+
+        {/* Meeting Name - Center */}
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <h2 className="text-white font-regular text-sm opacity-30 hover:opacity-100 transition-opacity">
+            {meetingName || meetingCode}
+          </h2>
         </div>
+
+        {/* Profile Button - Right */}
+        <UserMenu />
       </header>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Video Grid Area */}
-        <div className="flex-1 p-4">
+        <div className="flex-1 px-4">
           <VideoGrid tracks={tracks} />
         </div>
 
         {/* Side Panels */}
         {(showChat || showParticipants) && (
-          <div className="w-80 bg-slate-800/50 border-l border-white/10 flex flex-col">
+          <div className="w-80 bg-[#1a1a1a] border-l border-white/10 flex flex-col">
             {/* Panel Tabs */}
             <div className="flex border-b border-white/10">
               <button
@@ -211,8 +241,8 @@ function MeetingRoomContent({ meetingCode }: { meetingCode: string }) {
                 }}
                 className={`flex-1 py-3 text-sm font-medium transition-colors ${
                   showParticipants
-                    ? "text-purple-400 border-b-2 border-purple-400"
-                    : "text-gray-400 hover:text-white"
+                    ? "text-white border-b-2 border-white"
+                    : "text-white/50 hover:text-white"
                 }`}
               >
                 Participants
@@ -224,8 +254,8 @@ function MeetingRoomContent({ meetingCode }: { meetingCode: string }) {
                 }}
                 className={`flex-1 py-3 text-sm font-medium transition-colors ${
                   showChat
-                    ? "text-purple-400 border-b-2 border-purple-400"
-                    : "text-gray-400 hover:text-white"
+                    ? "text-white border-b-2 border-white"
+                    : "text-white/50 hover:text-white"
                 }`}
               >
                 Chat

@@ -34,7 +34,7 @@ export default function Home() {
       const data = await response.json();
 
       if (data.success) {
-        router.push(`/meeting/${data.meetingCode}`);
+        router.push(`/meeting/${data.meetingCode}?new=true`);
       }
     } catch {
       // Handle error silently
@@ -71,14 +71,14 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#121212] flex flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between px-8 py-6">
-        <div className="w-10" />
+      <header className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-6">
+        <div className="w-8 sm:w-10" />
         <span className="text-white/20 font-regular text-sm">Welcome!</span>
         <UserMenu />
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center gap-6 -mt-16">
+      <main className="flex-1 flex flex-col items-center justify-center gap-5 sm:gap-6 -mt-8 sm:-mt-16 px-4 sm:px-0">
         {/* New Meeting Button */}
         <motion.button
           onClick={handleCreateMeeting}
@@ -124,13 +124,13 @@ export default function Home() {
         </span>
 
         {/* Join Meeting */}
-        <div className="relative">
+        <div className="relative w-full max-w-[280px] sm:max-w-none sm:w-auto">
           <motion.div 
             className="flex items-center gap-1 relative z-10"
             layout
             transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
           >
-            <motion.div className="relative" layout>
+            <motion.div className="relative flex-1 sm:flex-none" layout>
               <input
                 type="text"
                 value={meetingCode}
@@ -140,7 +140,7 @@ export default function Home() {
                 }}
                 placeholder="enter ten letter code"
                 maxLength={10}
-                className="w-52 h-10 px-3 py-3 bg-[#232323] border border-white/5 rounded-lg text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors text-base"
+                className="w-full sm:w-52 h-10 px-3 py-3 bg-[#232323] border border-white/5 rounded-lg text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors text-base"
                 onKeyDown={(e) => e.key === "Enter" && handleJoinMeeting()}
               />
             </motion.div>

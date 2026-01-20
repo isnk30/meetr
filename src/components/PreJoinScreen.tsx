@@ -24,12 +24,14 @@ interface DeviceInfo {
 
 interface PreJoinScreenProps {
   meetingCode: string;
-  onJoin: (name: string, audioEnabled: boolean, videoEnabled: boolean) => void;
+  isNewMeeting?: boolean;
+  onJoin: (name: string, audioEnabled: boolean, videoEnabled: boolean, meetingName?: string) => void;
   onBack: () => void;
 }
 
 export default function PreJoinScreen({
   meetingCode,
+  isNewMeeting = false,
   onJoin,
   onBack,
 }: PreJoinScreenProps) {
@@ -39,6 +41,7 @@ export default function PreJoinScreen({
   const micDropdownRef = useRef<HTMLDivElement>(null);
 
   const [name, setName] = useState("");
+  const [meetingName, setMeetingName] = useState("");
   const [permissionStatus, setPermissionStatus] =
     useState<PermissionStatus>("pending");
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -260,7 +263,7 @@ export default function PreJoinScreen({
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
     }
-    onJoin(name.trim(), audioEnabled, videoEnabled);
+    onJoin(name.trim(), audioEnabled, videoEnabled, meetingName.trim() || undefined);
   };
 
   // Format meeting code with dashes for display
@@ -333,24 +336,36 @@ export default function PreJoinScreen({
   }
 
   return (
-    <div className="min-h-screen bg-[#121212] flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-[#121212] flex flex-col items-center justify-center p-4 pt-16 sm:pt-4">
       {/* Back Button */}
       <motion.button
         onClick={onBack}
-        className="absolute top-5 left-7 p-3 rounded-lg hover:bg-white/5 transition-colors"
+        className="absolute top-4 left-4 sm:top-5 sm:left-7 p-2 sm:p-3 rounded-lg hover:bg-white/5 transition-colors"
         whileTap={{ scale: 0.95 }}
       >
         <ArrowLeft className="w-5 h-5 text-white" />
       </motion.button>
 
+      {/* Meeting Name Input (only for new meetings) */}
+      {isNewMeeting && (
+        <input
+          type="text"
+          value={meetingName}
+          onChange={(e) => setMeetingName(e.target.value)}
+          placeholder="name your meeting (optional)"
+          maxLength={50}
+          className="w-full max-w-[280px] sm:max-w-none sm:w-64 h-10 px-3 mb-2 bg-transparent border border-transparent rounded-lg text-white placeholder-white/20 focus:outline-none focus:bg-[#232323] focus:border-white/20 transition-colors text-base text-center"
+        />
+      )}
+
       {/* Meeting Code */}
-      <div className="flex items-center gap-1 mb-6">
-        <span className="text-white/30 text-base">meeting code:</span>
-        <span className="text-white text-base">{formatMeetingCode(meetingCode)}</span>
+      <div className="flex items-center gap-1 mb-4 sm:mb-6">
+        <span className="text-white/30 text-sm sm:text-base">meeting code:</span>
+        <span className="text-white text-sm sm:text-base">{formatMeetingCode(meetingCode)}</span>
       </div>
 
       {/* Video Preview */}
-      <div className="relative w-[580px] h-[325px] bg-[#535353] rounded-xl overflow-hidden mb-6">
+      <div className="relative w-full max-w-[580px] aspect-video sm:w-[580px] sm:h-[325px] bg-[#535353] rounded-xl overflow-hidden mb-4 sm:mb-6">
         <video
           ref={videoRef}
           autoPlay
@@ -415,12 +430,12 @@ export default function PreJoinScreen({
       </div>
 
       {/* Device Selectors */}
-      <div className="flex items-center gap-9 mb-6">
+      <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-9 mb-4 sm:mb-6 w-full max-w-[580px] sm:w-auto px-2 sm:px-0">
         {/* Camera Selector */}
-        <div className="relative flex items-center gap-1" ref={cameraDropdownRef}>
+        <div className="relative flex items-center gap-1 w-full sm:w-auto justify-center sm:justify-start" ref={cameraDropdownRef}>
           <motion.button
             onClick={toggleVideo}
-            className="p-3 rounded-lg hover:bg-white/5 transition-colors"
+            className="p-2 sm:p-3 rounded-lg hover:bg-white/5 transition-colors"
             whileTap={{ scale: 0.95 }}
           >
             {videoEnabled ? (
@@ -434,7 +449,7 @@ export default function PreJoinScreen({
             className="flex items-center gap-0.5 p-2 rounded-lg hover:bg-white/5 transition-colors"
             whileTap={{ scale: 0.95 }}
           >
-            <span className="text-white/30 text-base max-w-[140px] truncate">
+            <span className="text-white/30 text-sm sm:text-base max-w-[120px] sm:max-w-[140px] truncate">
               {getSelectedVideoLabel()}
             </span>
             <ChevronDown className={`w-4 h-4 text-white/30 transition-transform ${cameraDropdownOpen ? "rotate-180" : ""}`} />
@@ -473,10 +488,10 @@ export default function PreJoinScreen({
         </div>
 
         {/* Mic Selector */}
-        <div className="relative flex items-center gap-1" ref={micDropdownRef}>
+        <div className="relative flex items-center gap-1 w-full sm:w-auto justify-center sm:justify-start" ref={micDropdownRef}>
           <motion.button
             onClick={toggleAudio}
-            className="p-3 rounded-lg hover:bg-white/5 transition-colors"
+            className="p-2 sm:p-3 rounded-lg hover:bg-white/5 transition-colors"
             whileTap={{ scale: 0.95 }}
           >
             {audioEnabled ? (
@@ -490,7 +505,7 @@ export default function PreJoinScreen({
             className="flex items-center gap-0.5 p-2 rounded-lg hover:bg-white/5 transition-colors"
             whileTap={{ scale: 0.95 }}
           >
-            <span className="text-white/30 text-base max-w-[140px] truncate">
+            <span className="text-white/30 text-sm sm:text-base max-w-[120px] sm:max-w-[140px] truncate">
               {getSelectedAudioLabel()}
             </span>
             <ChevronDown className={`w-4 h-4 text-white/30 transition-transform ${micDropdownOpen ? "rotate-180" : ""}`} />
@@ -530,20 +545,20 @@ export default function PreJoinScreen({
       </div>
 
       {/* Name Input and Join Button */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-center gap-2 w-full max-w-[580px] sm:w-auto px-4 sm:px-0">
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="enter your name"
-          className="w-52 h-11 px-3 bg-[#232323] border border-white/5 rounded-lg text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors text-base"
+          className="w-full sm:w-52 h-11 px-3 bg-[#232323] border border-white/5 rounded-lg text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors text-base"
           onKeyDown={(e) => e.key === "Enter" && handleJoin()}
           autoFocus
         />
         <motion.button
           onClick={handleJoin}
           disabled={!isJoinEnabled}
-          className={`h-11 px-6 flex items-center justify-center gap-1 rounded-lg transition-colors font-semibold text-base ${
+          className={`w-full sm:w-auto h-11 px-6 flex items-center justify-center gap-1 rounded-lg transition-colors font-semibold text-base ${
             isJoinEnabled
               ? "bg-white hover:bg-white/90 text-black"
               : "bg-[#232323] border border-white/5"
