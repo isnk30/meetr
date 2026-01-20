@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Video, Mic, ChevronDown, Check } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useMaybeRoomContext } from "@livekit/components-react";
-import type { Room } from "livekit-client";
+import { Track, type Room } from "livekit-client";
 
 interface DeviceInfo {
   deviceId: string;
@@ -92,7 +92,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         const localParticipant = room.localParticipant;
         
         // Get current video device
-        const videoTrack = localParticipant.getTrackPublication("camera")?.track;
+        const videoTrack = localParticipant.getTrackPublication(Track.Source.Camera)?.track;
         if (videoTrack) {
           const settings = videoTrack.mediaStreamTrack?.getSettings();
           setSelectedVideoDevice(settings?.deviceId || videoInputs[0]?.deviceId || "");
@@ -101,7 +101,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         }
 
         // Get current audio device
-        const audioTrack = localParticipant.getTrackPublication("microphone")?.track;
+        const audioTrack = localParticipant.getTrackPublication(Track.Source.Microphone)?.track;
         if (audioTrack) {
           const settings = audioTrack.mediaStreamTrack?.getSettings();
           setSelectedAudioDevice(settings?.deviceId || audioInputs[0]?.deviceId || "");
