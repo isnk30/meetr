@@ -24,10 +24,10 @@ export default function VideoGrid({ tracks }: VideoGridProps) {
     const count = videoTracks.length;
     if (count === 0) return "";
     if (count === 1) return "grid-cols-1";
-    if (count === 2) return "grid-cols-2";
-    if (count <= 4) return "grid-cols-2";
-    if (count <= 6) return "grid-cols-3";
-    return "grid-cols-4";
+    if (count === 2) return "grid-cols-1 sm:grid-cols-2";
+    if (count <= 4) return "grid-cols-1 sm:grid-cols-2";
+    if (count <= 6) return "grid-cols-2 sm:grid-cols-3";
+    return "grid-cols-2 sm:grid-cols-4";
   };
 
   if (videoTracks.length === 0) {

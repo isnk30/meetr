@@ -44,7 +44,7 @@ export default function Home() {
   };
 
   const handleJoinMeeting = async () => {
-    if (meetingCode.length < 10) return;
+    if (meetingCode.length < 12) return;
 
     setIsJoining(true);
     setJoinError(false);
@@ -139,7 +139,7 @@ export default function Home() {
                   setJoinError(false);
                 }}
                 placeholder="enter ten letter code"
-                maxLength={10}
+                maxLength={12}
                 className="w-full sm:w-52 h-10 px-3 py-3 bg-[#232323] border border-white/5 rounded-lg text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors text-base"
                 onKeyDown={(e) => e.key === "Enter" && handleJoinMeeting()}
               />
@@ -148,17 +148,17 @@ export default function Home() {
               {meetingCode.length > 0 && (
                 <motion.button
                   onClick={handleJoinMeeting}
-                  disabled={isJoining || meetingCode.length < 10}
+                  disabled={isJoining || meetingCode.length < 12}
                   className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors overflow-hidden ${
-                    meetingCode.length >= 10
+                    meetingCode.length >= 12
                       ? "bg-white hover:bg-white/90"
                       : "bg-[#232323] border border-white/5"
                   }`}
                   initial="initial"
                   animate="animate"
                   exit="exit"
-                  whileHover={meetingCode.length >= 10 ? "hover" : undefined}
-                  whileTap={meetingCode.length >= 10 ? { scale: 0.95 } : undefined}
+                  whileHover={meetingCode.length >= 12 ? "hover" : undefined}
+                  whileTap={meetingCode.length >= 12 ? { scale: 0.95 } : undefined}
                 >
                   <AnimatePresence mode="wait" initial={false}>
                     {isJoining ? (
@@ -186,7 +186,7 @@ export default function Home() {
                       >
                         <ArrowRight
                           className={`w-5 h-5 ${
-                            meetingCode.length >= 10 ? "text-black" : "text-[#5D5D5D]"
+                            meetingCode.length >= 12 ? "text-black" : "text-[#5D5D5D]"
                           }`}
                           strokeWidth={2.5}
                         />

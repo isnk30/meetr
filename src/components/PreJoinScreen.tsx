@@ -141,9 +141,14 @@ export default function PreJoinScreen({
           streamRef.current.removeTrack(currentVideoTrack);
         }
 
-        // Get new video track
+        // Get new video track at 1080p
         const newStream = await navigator.mediaDevices.getUserMedia({
-          video: { deviceId: { exact: deviceId } },
+          video: {
+            deviceId: { exact: deviceId },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: 30 },
+          },
         });
         const newVideoTrack = newStream.getVideoTracks()[0];
         newVideoTrack.enabled = videoEnabled;
@@ -182,7 +187,11 @@ export default function PreJoinScreen({
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 },
+        },
         audio: true,
       });
 
