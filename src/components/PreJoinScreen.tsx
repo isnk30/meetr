@@ -349,13 +349,27 @@ export default function PreJoinScreen({
       {/* Back Button */}
       <motion.button
         onClick={onBack}
-        className="absolute top-4 left-4 sm:top-5 sm:left-7 p-2 sm:p-3 rounded-lg hover:bg-white/5 transition-colors"
+        className="absolute top-4 sm:top-5 left-4 sm:left-7 h-10 flex items-center px-2 sm:px-3 rounded-lg opacity-40 hover:opacity-100 hover:bg-white/5 transition-opacity"
         whileTap={{ scale: 0.95 }}
+        initial="rest"
+        whileHover="hover"
       >
-        <ArrowLeft className="w-5 h-5 text-white" />
+        <ArrowLeft className="w-5 h-5 text-white flex-shrink-0" />
+        <div className="overflow-hidden">
+          <motion.span
+            className="block text-white text-sm whitespace-nowrap pl-1"
+            variants={{
+              rest: { x: -8, opacity: 0, filter: "blur(4px)" },
+              hover: { x: 0, opacity: 1, filter: "blur(0px)" },
+            }}
+            transition={{ duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
+          >
+            Back home
+          </motion.span>
+        </div>
       </motion.button>
 
-      {/* Meeting Name Input (only for new meetings) */}
+      {/* Meeting Name Input (centered, only for new meetings) */}
       {isNewMeeting && (
         <input
           type="text"
@@ -363,7 +377,7 @@ export default function PreJoinScreen({
           onChange={(e) => setMeetingName(e.target.value)}
           placeholder="name your meeting (optional)"
           maxLength={50}
-          className="w-full max-w-[280px] sm:max-w-none sm:w-64 h-10 px-3 mb-2 bg-transparent border border-transparent rounded-lg text-white placeholder-white/20 focus:outline-none focus:bg-[#232323] focus:border-white/20 transition-colors text-base text-center"
+          className="absolute top-4 sm:top-5 left-1/2 -translate-x-1/2 w-48 sm:w-64 h-10 px-3 bg-transparent border border-transparent rounded-lg text-white placeholder-white/20 focus:outline-none focus:bg-[#232323] focus:border-white/20 transition-colors text-base text-center"
         />
       )}
 
@@ -384,58 +398,82 @@ export default function PreJoinScreen({
         />
         {!videoEnabled && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-24 h-24 bg-[#3a3a3a] rounded-full flex items-center justify-center">
-              <span className="text-3xl font-semibold text-white">
-                {name.trim() ? name.charAt(0).toUpperCase() : "?"}
-              </span>
-            </div>
+            <span className="text-2xl font-medium text-white">
+              {name.trim() || "Your name"}
+            </span>
           </div>
         )}
 
-        {/* Name Badge and Status Indicators - Bottom Overlay */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-[2px]">
-          {/* Name Badge */}
-          <div 
-            className="flex items-center justify-center px-2.5 h-8 rounded-xl border border-white/[0.05]"
-            style={{ 
-              backgroundColor: "rgba(30, 30, 30, 0.4)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)"
-            }}
-          >
-            <span className="text-[15px] text-white/90 font-normal">
-              {name.trim() || "Name"}
-            </span>
-          </div>
+        {/* Status Indicators - Bottom Overlay */}
+        <motion.div 
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-[2px]"
+          layout
+          transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+        >
+          <AnimatePresence mode="popLayout">
+            {/* Name Badge (only when camera is on) */}
+            {videoEnabled && (
+              <motion.div
+                key="name-badge"
+                layout
+                initial={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+                animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+                exit={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+                transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                className="flex items-center justify-center px-2.5 h-8 rounded-xl border border-white/[0.05]"
+                style={{ 
+                  backgroundColor: "rgba(30, 30, 30, 0.4)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)"
+                }}
+              >
+                <span className="text-[15px] text-white/90 font-normal">
+                  {name.trim() || "Name"}
+                </span>
+              </motion.div>
+            )}
 
-          {/* Mic Status */}
-          {!audioEnabled && (
-            <div 
-              className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
-              style={{ 
-                backgroundColor: "rgba(30, 30, 30, 0.4)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)"
-              }}
-            >
-              <MicOff className="w-[14px] h-[14px] text-white/90" />
-            </div>
-          )}
+            {/* Camera Status */}
+            {!videoEnabled && (
+              <motion.div
+                key="video-off"
+                layout
+                initial={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+                animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+                exit={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+                transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
+                style={{ 
+                  backgroundColor: "rgba(30, 30, 30, 0.4)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)"
+                }}
+              >
+                <VideoOff className="w-[14px] h-[14px] text-white/90" />
+              </motion.div>
+            )}
 
-          {/* Camera Status */}
-          {!videoEnabled && (
-            <div 
-              className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
-              style={{ 
-                backgroundColor: "rgba(30, 30, 30, 0.4)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)"
-              }}
-            >
-              <VideoOff className="w-[14px] h-[14px] text-white/90" />
-            </div>
-          )}
-        </div>
+            {/* Mic Status */}
+            {!audioEnabled && (
+              <motion.div
+                key="mic-off"
+                layout
+                initial={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+                animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+                exit={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+                transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
+                style={{ 
+                  backgroundColor: "rgba(30, 30, 30, 0.4)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)"
+                }}
+              >
+                <MicOff className="w-[14px] h-[14px] text-white/90" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </div>
 
       {/* Device Selectors */}
@@ -567,7 +605,7 @@ export default function PreJoinScreen({
         <motion.button
           onClick={handleJoin}
           disabled={!isJoinEnabled}
-          className={`w-full sm:w-auto h-11 px-6 flex items-center justify-center gap-1 rounded-lg transition-colors font-semibold text-base ${
+          className={`w-full sm:w-auto h-11 px-4 flex items-center justify-center gap-1 rounded-lg transition-colors font-semibold text-base ${
             isJoinEnabled
               ? "bg-white hover:bg-white/90 text-black"
               : "bg-[#232323] border border-white/5"

@@ -83,7 +83,7 @@ export default function Home() {
         <motion.button
           onClick={handleCreateMeeting}
           disabled={isCreating}
-          className="flex items-center h-10 px-8 py-3 bg-white hover:bg-white/90 disabled:bg-white/70 text-black font-medium text-base rounded-lg transition-colors overflow-hidden"
+          className="flex items-center h-10 px-5 py-3 bg-white hover:bg-white/90 disabled:bg-white/70 text-black font-medium text-base rounded-lg transition-colors overflow-hidden"
           whileTap={!isCreating ? { scale: 0.97 } : undefined}
           initial={{ gap: 4 }}
           whileHover={!isCreating ? { gap: 8 } : { gap: 4 }}
