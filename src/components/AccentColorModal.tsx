@@ -3,6 +3,7 @@
 import { useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useMaybeRoomContext } from "@livekit/components-react";
 import { ACCENT_COLORS, useAccentColor, type AccentColorId } from "@/contexts/AccentColorContext";
 
 interface AccentColorModalProps {
@@ -12,7 +13,8 @@ interface AccentColorModalProps {
 
 export default function AccentColorModal({ isOpen, onClose }: AccentColorModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const { accentColorId, setAccentColor } = useAccentColor();
+  const room = useMaybeRoomContext();
+  const { accentColorId, accentColor, setAccentColor } = useAccentColor();
 
   // Close modal on escape key
   useEffect(() => {
@@ -28,8 +30,22 @@ export default function AccentColorModal({ isOpen, onClose }: AccentColorModalPr
     }
   }, [isOpen, onClose]);
 
-  const handleSelectColor = (colorId: AccentColorId) => {
+  const handleSelectColor = async (colorId: AccentColorId) => {
     setAccentColor(colorId);
+    
+    // If in a room, update participant metadata so others can see the accent color
+    if (room) {
+      const newColor = ACCENT_COLORS.find((c) => c.id === colorId)?.value || accentColor;
+      try {
+        const currentMetadata = room.localParticipant.metadata 
+          ? JSON.parse(room.localParticipant.metadata) 
+          : {};
+        const newMetadata = { ...currentMetadata, accentColor: newColor };
+        await room.localParticipant.setMetadata(JSON.stringify(newMetadata));
+      } catch (error) {
+        console.error("Failed to update accent color metadata:", error);
+      }
+    }
   };
 
   if (!isOpen) return null;

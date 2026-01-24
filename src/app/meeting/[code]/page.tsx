@@ -19,6 +19,7 @@ import ChatPanel from "@/components/ChatPanel";
 import VideoGrid from "@/components/VideoGrid";
 import PreJoinScreen from "@/components/PreJoinScreen";
 import UserMenu from "@/components/UserMenu";
+import { useAccentColor } from "@/contexts/AccentColorContext";
 
 interface PageProps {
   params: Promise<{ code: string }>;
@@ -190,6 +191,7 @@ const HIGH_BITRATE = 4_000_000; // 4 Mbps for 1-2 participants
 function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { meetingCode: string; meetingName: string }) {
   const room = useRoomContext();
   const participants = useParticipants();
+  const { accentColor } = useAccentColor();
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -200,6 +202,7 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
   const [copied, setCopied] = useState(false);
   const meetingInfoRef = useRef<HTMLDivElement>(null);
   const lastBitrateRef = useRef<number | null>(null);
+  const hasSetInitialMetadata = useRef(false);
 
   const tracks = useTracks(
     [
@@ -208,6 +211,26 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
     ],
     { onlySubscribed: false }
   );
+
+  // Set accent color in participant metadata when joining
+  useEffect(() => {
+    if (hasSetInitialMetadata.current) return;
+    
+    const setInitialMetadata = async () => {
+      try {
+        const currentMetadata = room.localParticipant.metadata 
+          ? JSON.parse(room.localParticipant.metadata) 
+          : {};
+        const newMetadata = { ...currentMetadata, accentColor };
+        await room.localParticipant.setMetadata(JSON.stringify(newMetadata));
+        hasSetInitialMetadata.current = true;
+      } catch (error) {
+        console.error("Failed to set initial accent color metadata:", error);
+      }
+    };
+    
+    setInitialMetadata();
+  }, [room.localParticipant, accentColor]);
 
   // Dynamic bitrate adjustment based on participant count
   // 1-2 participants: high bitrate (4 Mbps) for better quality

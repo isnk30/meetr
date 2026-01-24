@@ -8,7 +8,6 @@ import {
 import { Track } from "livekit-client";
 import { MicOff, VideoOff } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { useAccentColor } from "@/contexts/AccentColorContext";
 
 interface VideoGridProps {
   tracks: TrackReferenceOrPlaceholder[];
@@ -64,8 +63,10 @@ interface ParticipantTileProps {
   track: TrackReferenceOrPlaceholder;
 }
 
+// Default accent color when participant hasn't set one
+const DEFAULT_ACCENT_COLOR = "#3B82F6"; // blue
+
 function ParticipantTile({ track }: ParticipantTileProps) {
-  const { accentColor } = useAccentColor();
   const participant = track.participant;
   const isScreenShare = track.source === Track.Source.ScreenShare;
   const isMicEnabled = participant.isMicrophoneEnabled;
@@ -76,8 +77,21 @@ function ParticipantTile({ track }: ParticipantTileProps) {
   // For screen shares, just check if track exists
   const showVideo = isScreenShare ? hasVideoTrack : (hasVideoTrack && isCameraEnabled);
 
-  // Use accent color when video is off, gray when video is on
-  const bgColor = showVideo ? "#535353" : accentColor;
+  // Get accent color from participant's metadata (each user has their own color)
+  let participantAccentColor = DEFAULT_ACCENT_COLOR;
+  try {
+    if (participant.metadata) {
+      const metadata = JSON.parse(participant.metadata);
+      if (metadata.accentColor) {
+        participantAccentColor = metadata.accentColor;
+      }
+    }
+  } catch {
+    // Invalid metadata, use default
+  }
+
+  // Use participant's accent color when video is off, gray when video is on
+  const bgColor = showVideo ? "#535353" : participantAccentColor;
   const participantName = participant.name || participant.identity;
 
   return (
@@ -171,11 +185,11 @@ function ParticipantTile({ track }: ParticipantTileProps) {
         </AnimatePresence>
       </motion.div>
 
-      {/* Speaking Indicator */}
+      {/* Speaking Indicator - uses participant's accent color */}
       {participant.isSpeaking && (
         <div 
           className="absolute inset-0 border-2 rounded-xl pointer-events-none" 
-          style={{ borderColor: accentColor }}
+          style={{ borderColor: participantAccentColor }}
         />
       )}
     </div>
