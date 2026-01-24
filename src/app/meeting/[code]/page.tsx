@@ -11,6 +11,7 @@ import {
 } from "@livekit/components-react";
 import { Track, RoomOptions, VideoPresets, VideoEncoding } from "livekit-client";
 import { Loader2, AlertCircle, Info, Copy, Check, X } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 import MeetingControls from "@/components/MeetingControls";
 import ParticipantsList from "@/components/ParticipantsList";
@@ -306,8 +307,8 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
         {/* Meeting Name - Center */}
         <div className="absolute left-1/2 -translate-x-1/2">
           <div className="relative" ref={meetingInfoRef}>
-            <div className="flex items-center gap-1.5 group">
-              <h2 className="text-white font-regular text-sm opacity-30 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-white font-regular text-sm opacity-30">
                 {meetingName || "Meeting"}
               </h2>
               <button
@@ -319,8 +320,16 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
             </div>
 
             {/* Meeting Info Popup */}
-            {showMeetingInfo && (
-              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 bg-[#2a2a2a] rounded-xl border border-white/10 shadow-xl z-50 overflow-hidden">
+            <AnimatePresence>
+              {showMeetingInfo && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+                  transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+                  style={{ transformOrigin: "top center" }}
+                  className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 bg-[#2a2a2a] rounded-xl border border-white/10 shadow-xl z-50 overflow-hidden"
+                >
                   {/* Meeting Name Section */}
                   <div className="p-4 border-b border-white/10">
                     <label className="text-white/50 text-xs font-medium mb-2 block">
@@ -388,8 +397,9 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
                       </button>
                     </div>
                   </div>
-                </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -398,53 +408,34 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <motion.div className="flex-1 flex overflow-hidden relative px-4">
         {/* Video Grid Area */}
-        <div className={`flex-1 px-4 ${(showChat || showParticipants) ? 'hidden md:block' : ''}`}>
+        <div className={`flex-1 h-full min-w-0 ${(showChat || showParticipants) ? 'hidden md:block' : ''}`}>
           <VideoGrid tracks={tracks} />
         </div>
 
         {/* Side Panels - Full screen overlay on mobile, sidebar on desktop */}
-        {(showChat || showParticipants) && (
-          <div className="absolute inset-0 md:relative md:inset-auto md:w-80 bg-[#1a1a1a] md:border-l border-white/10 flex flex-col z-10">
-            {/* Panel Tabs */}
-            <div className="flex border-b border-white/10">
-              <button
-                onClick={() => {
-                  setShowParticipants(true);
-                  setShowChat(false);
-                }}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                  showParticipants
-                    ? "text-white border-b-2 border-white"
-                    : "text-white/50 hover:text-white"
-                }`}
-              >
-                Participants
-              </button>
-              <button
-                onClick={() => {
-                  setShowChat(true);
-                  setShowParticipants(false);
-                }}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                  showChat
-                    ? "text-white border-b-2 border-white"
-                    : "text-white/50 hover:text-white"
-                }`}
-              >
-                Chat
-              </button>
-            </div>
-
-            {/* Panel Content */}
-            <div className="flex-1 overflow-hidden">
-              {showParticipants && <ParticipantsList />}
-              {showChat && <ChatPanel />}
-            </div>
-          </div>
-        )}
-      </div>
+        <AnimatePresence>
+          {(showChat || showParticipants) && (
+            <motion.div
+              initial={{ width: 0, marginLeft: 0 }}
+              animate={{ width: 320, marginLeft: 16 }}
+              exit={{ width: 0, marginLeft: 0 }}
+              transition={{ 
+                duration: 0.3,
+                ease: [0.32, 0.72, 0, 1]
+              }}
+              className="absolute inset-0 md:relative md:inset-auto md:h-full bg-[#1a1a1a] md:border-l border-white/10 flex flex-col z-10 overflow-hidden md:rounded-xl"
+            >
+              {/* Panel Content */}
+              <div className="flex-1 overflow-hidden min-w-80">
+                {showParticipants && <ParticipantsList />}
+                {showChat && <ChatPanel />}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       {/* Controls */}
       <MeetingControls

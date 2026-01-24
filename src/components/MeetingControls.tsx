@@ -96,7 +96,7 @@ export default function MeetingControls({
   };
 
   return (
-    <div className="h-20 flex items-center justify-between px-6">
+    <div className="relative z-30 h-20 flex items-center justify-between px-6">
       {/* Left: Mute and Video buttons */}
       <div className="flex items-center gap-1">
         <button

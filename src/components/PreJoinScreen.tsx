@@ -14,6 +14,7 @@ import {
   Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useAccentColor } from "@/contexts/AccentColorContext";
 
 type PermissionStatus = "pending" | "granted" | "denied" | "error";
 
@@ -35,6 +36,7 @@ export default function PreJoinScreen({
   onJoin,
   onBack,
 }: PreJoinScreenProps) {
+  const { accentColor } = useAccentColor();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const cameraDropdownRef = useRef<HTMLDivElement>(null);
@@ -388,7 +390,10 @@ export default function PreJoinScreen({
       </div>
 
       {/* Video Preview */}
-      <div className="relative w-full max-w-[580px] aspect-video sm:w-[580px] sm:h-[325px] bg-[#535353] rounded-xl overflow-hidden mb-4 sm:mb-6">
+      <div 
+        className="relative w-full max-w-[580px] aspect-video sm:w-[580px] sm:h-[325px] rounded-xl overflow-hidden mb-4 sm:mb-6"
+        style={{ backgroundColor: videoEnabled ? "#535353" : accentColor }}
+      >
         <video
           ref={videoRef}
           autoPlay

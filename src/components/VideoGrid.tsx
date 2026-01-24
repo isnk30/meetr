@@ -7,6 +7,8 @@ import {
 } from "@livekit/components-react";
 import { Track } from "livekit-client";
 import { MicOff, VideoOff } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { useAccentColor } from "@/contexts/AccentColorContext";
 
 interface VideoGridProps {
   tracks: TrackReferenceOrPlaceholder[];
@@ -63,79 +65,118 @@ interface ParticipantTileProps {
 }
 
 function ParticipantTile({ track }: ParticipantTileProps) {
+  const { accentColor } = useAccentColor();
   const participant = track.participant;
   const isScreenShare = track.source === Track.Source.ScreenShare;
   const isMicEnabled = participant.isMicrophoneEnabled;
   const isCameraEnabled = participant.isCameraEnabled;
-  const hasVideo = isTrackReference(track) && track.publication?.track != null;
+  const hasVideoTrack = isTrackReference(track) && track.publication?.track != null;
+  
+  // For camera tracks, check if camera is enabled (track might exist but be disabled)
+  // For screen shares, just check if track exists
+  const showVideo = isScreenShare ? hasVideoTrack : (hasVideoTrack && isCameraEnabled);
+
+  // Use accent color when video is off, gray when video is on
+  const bgColor = showVideo ? "#535353" : accentColor;
+  const participantName = participant.name || participant.identity;
 
   return (
-    <div className="relative bg-[#535353] rounded-xl overflow-hidden">
-      {hasVideo && isTrackReference(track) ? (
+    <div 
+      className="relative rounded-xl overflow-hidden"
+      style={{ backgroundColor: bgColor }}
+    >
+      {showVideo && isTrackReference(track) ? (
         <VideoTrack 
           trackRef={track} 
           className={`w-full h-full object-cover ${!isScreenShare ? "scale-x-[-1]" : ""}`} 
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#535353]">
-          <div className="w-20 h-20 bg-[#3a3a3a] rounded-full flex items-center justify-center">
-            <span className="text-3xl font-semibold text-white">
-              {participant.name?.charAt(0).toUpperCase() || "?"}
-            </span>
-          </div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-2xl font-medium text-white">
+            {isScreenShare ? `${participantName}'s screen` : participantName}
+          </span>
         </div>
       )}
 
-      {/* Name Badge and Status Indicators - Bottom Overlay */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-[2px]">
-        {/* Name Badge */}
-        <div 
-          className="flex items-center justify-center px-2.5 h-8 rounded-xl border border-white/[0.05]"
-          style={{ 
-            backgroundColor: "rgba(30, 30, 30, 0.4)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)"
-          }}
-        >
-          <span className="text-[15px] text-white/90 font-normal">
-            {isScreenShare
-              ? `${participant.name}'s screen`
-              : participant.name || participant.identity}
-          </span>
-        </div>
+      {/* Status Indicators - Bottom Overlay */}
+      <motion.div 
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-[2px]"
+        layout
+        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+      >
+        <AnimatePresence mode="popLayout">
+          {/* Name Badge (only when camera is on or screen share) */}
+          {showVideo && (
+            <motion.div
+              key="name-badge"
+              layout
+              initial={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+              animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+              exit={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+              className="flex items-center justify-center px-2.5 h-8 rounded-xl border border-white/[0.05]"
+              style={{ 
+                backgroundColor: "rgba(30, 30, 30, 0.4)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)"
+              }}
+            >
+              <span className="text-[15px] text-white/90 font-normal">
+                {isScreenShare
+                  ? `${participantName}'s screen`
+                  : participantName}
+              </span>
+            </motion.div>
+          )}
 
-        {/* Mic Status */}
-        {!isScreenShare && !isMicEnabled && (
-          <div 
-            className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
-            style={{ 
-              backgroundColor: "rgba(30, 30, 30, 0.4)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)"
-            }}
-          >
-            <MicOff className="w-[14px] h-[14px] text-white/90" />
-          </div>
-        )}
+          {/* Camera Status (only when camera is off and not screen share) */}
+          {!isScreenShare && !isCameraEnabled && (
+            <motion.div
+              key="video-off"
+              layout
+              initial={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+              animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+              exit={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+              className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
+              style={{ 
+                backgroundColor: "rgba(30, 30, 30, 0.4)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)"
+              }}
+            >
+              <VideoOff className="w-[14px] h-[14px] text-white/90" />
+            </motion.div>
+          )}
 
-        {/* Camera Status */}
-        {!isScreenShare && !isCameraEnabled && (
-          <div 
-            className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
-            style={{ 
-              backgroundColor: "rgba(30, 30, 30, 0.4)",
-              backdropFilter: "blur(20px)",
-              WebkitBackdropFilter: "blur(20px)"
-            }}
-          >
-            <VideoOff className="w-[14px] h-[14px] text-white/90" />
-          </div>
-        )}
-      </div>
+          {/* Mic Status */}
+          {!isScreenShare && !isMicEnabled && (
+            <motion.div
+              key="mic-off"
+              layout
+              initial={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+              animate={{ opacity: 1, filter: "blur(0px)", scale: 1 }}
+              exit={{ opacity: 0, filter: "blur(4px)", scale: 0.8 }}
+              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+              className="flex items-center justify-center w-8 h-8 rounded-xl border border-white/[0.05]"
+              style={{ 
+                backgroundColor: "rgba(30, 30, 30, 0.4)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)"
+              }}
+            >
+              <MicOff className="w-[14px] h-[14px] text-white/90" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       {/* Speaking Indicator */}
       {participant.isSpeaking && (
-        <div className="absolute inset-0 border-2 border-green-500 rounded-xl pointer-events-none" />
+        <div 
+          className="absolute inset-0 border-2 rounded-xl pointer-events-none" 
+          style={{ borderColor: accentColor }}
+        />
       )}
     </div>
   );

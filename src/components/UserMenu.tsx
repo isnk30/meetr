@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { User, Settings } from "lucide-react";
+import { User, Settings, Palette } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import SettingsModal from "./SettingsModal";
+import AccentColorModal from "./AccentColorModal";
 
 export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAccentColor, setShowAccentColor] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,6 +26,11 @@ export default function UserMenu() {
   const handleOpenSettings = () => {
     setIsOpen(false);
     setShowSettings(true);
+  };
+
+  const handleOpenAccentColor = () => {
+    setIsOpen(false);
+    setShowAccentColor(true);
   };
 
   return (
@@ -50,17 +57,24 @@ export default function UserMenu() {
               <div className="flex flex-col gap-0.5">
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-1 px-1.5 py-1.5 w-[218px] rounded-lg hover:bg-[#2B2B2B] transition-colors"
+                  className="group flex items-center gap-1 px-1.5 py-1.5 w-[218px] rounded-lg hover:bg-[#2B2B2B] transition-colors"
                 >
-                  <User className="w-4 h-4 text-white/30" />
-                  <span className="text-white/30 text-xs">Account</span>
+                  <User className="w-4 h-4 text-white/30 group-hover:text-white transition-colors" />
+                  <span className="text-white/30 group-hover:text-white transition-colors text-xs">Account</span>
                 </button>
                 <button
                   onClick={handleOpenSettings}
-                  className="flex items-center gap-1 px-1.5 py-1.5 w-[218px] rounded-lg hover:bg-[#2B2B2B] transition-colors"
+                  className="group flex items-center gap-1 px-1.5 py-1.5 w-[218px] rounded-lg hover:bg-[#2B2B2B] transition-colors"
                 >
-                  <Settings className="w-4 h-4 text-white/30" />
-                  <span className="text-white/30 text-xs">Settings</span>
+                  <Settings className="w-4 h-4 text-white/30 group-hover:text-white transition-colors" />
+                  <span className="text-white/30 group-hover:text-white transition-colors text-xs">Settings</span>
+                </button>
+                <button
+                  onClick={handleOpenAccentColor}
+                  className="group flex items-center gap-1 px-1.5 py-1.5 w-[218px] rounded-lg hover:bg-[#2B2B2B] transition-colors"
+                >
+                  <Palette className="w-4 h-4 text-white/30 group-hover:text-white transition-colors" />
+                  <span className="text-white/30 group-hover:text-white transition-colors text-xs">Accent Color</span>
                 </button>
               </div>
             </motion.div>
@@ -69,6 +83,7 @@ export default function UserMenu() {
       </div>
 
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+      <AccentColorModal isOpen={showAccentColor} onClose={() => setShowAccentColor(false)} />
     </>
   );
 }
