@@ -4,8 +4,9 @@ import {
   TrackReferenceOrPlaceholder,
   VideoTrack,
   isTrackReference,
+  useParticipants,
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { Track, Participant } from "livekit-client";
 import { MicOff, VideoOff } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -14,6 +15,9 @@ interface VideoGridProps {
 }
 
 export default function VideoGrid({ tracks }: VideoGridProps) {
+  // Get all participants to access their latest metadata
+  const participants = useParticipants();
+  
   // Filter to only camera and screen share tracks
   const videoTracks = tracks.filter(
     (track) =>
@@ -30,6 +34,10 @@ export default function VideoGrid({ tracks }: VideoGridProps) {
     if (count <= 6) return "grid-cols-2 sm:grid-cols-3";
     return "grid-cols-2 sm:grid-cols-4";
   };
+
+  // Create a map for quick participant lookup by identity
+  const participantMap = new Map<string, Participant>();
+  participants.forEach((p) => participantMap.set(p.identity, p));
 
   if (videoTracks.length === 0) {
     return (
@@ -49,25 +57,30 @@ export default function VideoGrid({ tracks }: VideoGridProps) {
 
   return (
     <div className={`h-full grid ${getGridClass()} gap-4 auto-rows-fr`}>
-      {videoTracks.map((track) => (
-        <ParticipantTile
-          key={track.participant.identity + track.source}
-          track={track}
-        />
-      ))}
+      {videoTracks.map((track) => {
+        // Get the latest participant data with updated metadata
+        const latestParticipant = participantMap.get(track.participant.identity) || track.participant;
+        return (
+          <ParticipantTile
+            key={track.participant.identity + track.source}
+            track={track}
+            participant={latestParticipant}
+          />
+        );
+      })}
     </div>
   );
 }
 
 interface ParticipantTileProps {
   track: TrackReferenceOrPlaceholder;
+  participant: Participant;
 }
 
 // Default accent color when participant hasn't set one
 const DEFAULT_ACCENT_COLOR = "#3B82F6"; // blue
 
-function ParticipantTile({ track }: ParticipantTileProps) {
-  const participant = track.participant;
+function ParticipantTile({ track, participant }: ParticipantTileProps) {
   const isScreenShare = track.source === Track.Source.ScreenShare;
   const isMicEnabled = participant.isMicrophoneEnabled;
   const isCameraEnabled = participant.isCameraEnabled;
@@ -82,6 +95,7 @@ function ParticipantTile({ track }: ParticipantTileProps) {
   try {
     if (participant.metadata) {
       const metadata = JSON.parse(participant.metadata);
+      console.log("Participant metadata:", participant.identity, metadata);
       if (metadata.accentColor) {
         participantAccentColor = metadata.accentColor;
       }

@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       canPublish: true,
       canSubscribe: true,
       canPublishData: true,
+      canUpdateOwnMetadata: true,
     });
 
     const jwt = await token.toJwt();

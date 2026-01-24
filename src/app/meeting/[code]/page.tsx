@@ -217,6 +217,11 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
     if (hasSetInitialMetadata.current) return;
     
     const setInitialMetadata = async () => {
+      // Wait for room to be connected
+      if (room.state !== "connected") {
+        return;
+      }
+      
       try {
         const currentMetadata = room.localParticipant.metadata 
           ? JSON.parse(room.localParticipant.metadata) 
@@ -224,13 +229,14 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
         const newMetadata = { ...currentMetadata, accentColor };
         await room.localParticipant.setMetadata(JSON.stringify(newMetadata));
         hasSetInitialMetadata.current = true;
+        console.log("Set accent color metadata:", accentColor);
       } catch (error) {
         console.error("Failed to set initial accent color metadata:", error);
       }
     };
     
     setInitialMetadata();
-  }, [room.localParticipant, accentColor]);
+  }, [room, room.state, room.localParticipant, accentColor]);
 
   // Dynamic bitrate adjustment based on participant count
   // 1-2 participants: high bitrate (4 Mbps) for better quality
