@@ -131,7 +131,7 @@ export default function ChatPanel() {
       </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4">
         <div className="flex gap-2">
           <input
             type="text"

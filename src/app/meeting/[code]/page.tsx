@@ -454,7 +454,7 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
                 duration: 0.3,
                 ease: [0.32, 0.72, 0, 1]
               }}
-              className="absolute inset-0 md:relative md:inset-auto md:h-full bg-[#1a1a1a] md:border-l border-white/10 flex flex-col z-10 overflow-hidden md:rounded-xl"
+              className="absolute inset-0 md:relative md:inset-auto md:h-full bg-[#1a1a1a] flex flex-col z-10 overflow-hidden md:rounded-xl"
             >
               {/* Panel Content */}
               <div className="flex-1 overflow-hidden min-w-80">

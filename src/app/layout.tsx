@@ -33,7 +33,7 @@ export default function RootLayout({
         <AccentColorProvider>
           {children}
         </AccentColorProvider>
-        <AgentationProvider />
+        {/* <AgentationProvider /> */}
       </body>
     </html>
   );

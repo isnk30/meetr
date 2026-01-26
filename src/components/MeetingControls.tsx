@@ -145,7 +145,7 @@ export default function MeetingControls({
         onClick={leaveRoom}
         className="flex items-center gap-2 px-6 py-3 bg-[#FF3A3A]/30 opacity-50 hover:opacity-100 text-[#FF3A3A] rounded-lg transition-all active:scale-95"
       >
-        <span className="font-medium">Leave</span>
+        <span className="font-medium">Exit</span>
         <X className="w-5 h-5" strokeWidth={2.5} />
       </button>
 

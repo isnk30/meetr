@@ -74,8 +74,8 @@ export default function AccentColorModal({ isOpen, onClose }: AccentColorModalPr
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[400px] bg-[#1E1E1E] border border-[#252525] rounded-2xl shadow-[0px_20px_40px_rgba(0,0,0,0.3)] z-50 overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-              <h2 className="text-white text-base font-medium">Accent Colour</h2>
+            <div className="flex items-center justify-between px-5 py-4">
+              <h2 className="text-white text-base font-medium">Accent Color</h2>
               <motion.button
                 onClick={onClose}
                 className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
