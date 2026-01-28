@@ -3,7 +3,11 @@
 import { useParticipants, useLocalParticipant } from "@livekit/components-react";
 import { Mic, MicOff, Video, VideoOff, Crown } from "lucide-react";
 
-export default function ParticipantsList() {
+interface ParticipantsListProps {
+  hostIdentity?: string;
+}
+
+export default function ParticipantsList({ hostIdentity }: ParticipantsListProps) {
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
 
@@ -42,7 +46,7 @@ export default function ParticipantsList() {
                     <span className="text-xs text-gray-400">(You)</span>
                   )}
                 </div>
-                {participant.metadata && (
+                {hostIdentity && participant.identity === hostIdentity && (
                   <div className="flex items-center gap-1 text-xs text-purple-400">
                     <Crown className="w-3 h-3" />
                     <span>Host</span>

@@ -3,7 +3,7 @@ import { AccessToken } from "livekit-server-sdk";
 
 export async function POST(request: NextRequest) {
   try {
-    const { roomName, participantName } = await request.json();
+    const { roomName, participantName, isHost } = await request.json();
 
     if (!roomName || !participantName) {
       return NextResponse.json(
@@ -35,6 +35,8 @@ export async function POST(request: NextRequest) {
       canSubscribe: true,
       canPublishData: true,
       canUpdateOwnMetadata: true,
+      // Host gets roomAdmin permission to update room metadata
+      roomAdmin: isHost === true,
     });
 
     const jwt = await token.toJwt();

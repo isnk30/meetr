@@ -8,14 +8,15 @@ import {
   useRoomContext,
   useTracks,
   useParticipants,
+  useLocalParticipant,
 } from "@livekit/components-react";
-import { Track, RoomOptions, VideoPresets, VideoEncoding } from "livekit-client";
+import { Track, RoomOptions, VideoPresets, RoomEvent } from "livekit-client";
 import { Loader2, AlertCircle, Info, Copy, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 import MeetingControls from "@/components/MeetingControls";
 import ParticipantsList from "@/components/ParticipantsList";
-import ChatPanel from "@/components/ChatPanel";
+import ChatPanel, { ChatMessage } from "@/components/ChatPanel";
 import VideoGrid from "@/components/VideoGrid";
 import PreJoinScreen from "@/components/PreJoinScreen";
 import UserMenu from "@/components/UserMenu";
@@ -31,6 +32,8 @@ export default function MeetingPage({ params }: PageProps) {
   const searchParams = useSearchParams();
   const isNewMeeting = searchParams.get("new") === "true";
   const [meetingName, setMeetingName] = useState("");
+  const [existingMeetingName, setExistingMeetingName] = useState("");
+  const [hostIdentity, setHostIdentity] = useState("");
   const [token, setToken] = useState<string | null>(null);
   const [wsUrl, setWsUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,18 +42,46 @@ export default function MeetingPage({ params }: PageProps) {
   const [initialAudioEnabled, setInitialAudioEnabled] = useState(true);
   const [initialVideoEnabled, setInitialVideoEnabled] = useState(true);
   const [participantName, setParticipantName] = useState("");
+  const [isHost, setIsHost] = useState(false);
 
   const handleBack = useCallback(() => {
     router.push("/");
   }, [router]);
 
+  // Fetch existing meeting info for participants joining
+  useEffect(() => {
+    if (!isNewMeeting) {
+      fetch(`/api/meeting?code=${code}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.valid && data.meetingName) {
+            setExistingMeetingName(data.meetingName);
+          }
+          if (data.hostIdentity) {
+            setHostIdentity(data.hostIdentity);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [code, isNewMeeting]);
+
   const handleJoin = useCallback(async (name: string, audioEnabled: boolean, videoEnabled: boolean, meetingTitle?: string) => {
     setParticipantName(name);
     setInitialAudioEnabled(audioEnabled);
     setInitialVideoEnabled(videoEnabled);
-    if (meetingTitle) {
+    
+    // For new meetings, the joiner is the host and sets the meeting name
+    // For existing meetings, use the existing meeting name
+    const isHostUser = isNewMeeting;
+    setIsHost(isHostUser);
+    
+    if (isHostUser && meetingTitle) {
       setMeetingName(meetingTitle);
+      setHostIdentity(name);
+    } else if (existingMeetingName) {
+      setMeetingName(existingMeetingName);
     }
+    
     setIsConnecting(true);
     setError(null);
 
@@ -63,6 +94,7 @@ export default function MeetingPage({ params }: PageProps) {
         body: JSON.stringify({
           roomName: code,
           participantName: name,
+          isHost: isHostUser,
         }),
       });
 
@@ -82,7 +114,7 @@ export default function MeetingPage({ params }: PageProps) {
       setError("Failed to connect to the meeting. Please try again.");
       setIsConnecting(false);
     }
-  }, [code]);
+  }, [code, isNewMeeting, existingMeetingName]);
 
   const handleDisconnect = () => {
     router.push("/");
@@ -149,6 +181,7 @@ export default function MeetingPage({ params }: PageProps) {
       <PreJoinScreen
         meetingCode={code}
         isNewMeeting={isNewMeeting}
+        existingMeetingName={existingMeetingName}
         onJoin={handleJoin}
         onBack={handleBack}
       />
@@ -178,7 +211,7 @@ export default function MeetingPage({ params }: PageProps) {
       data-lk-theme="default"
       className="min-h-screen bg-[#121212]"
     >
-      <MeetingRoomContent meetingCode={code} meetingName={meetingName} />
+      <MeetingRoomContent meetingCode={code} meetingName={meetingName} isHost={isHost} hostIdentity={hostIdentity} />
       <RoomAudioRenderer />
     </LiveKitRoom>
   );
@@ -188,21 +221,34 @@ export default function MeetingPage({ params }: PageProps) {
 const STANDARD_BITRATE = 2_500_000; // 2.5 Mbps for 3+ participants
 const HIGH_BITRATE = 4_000_000; // 4 Mbps for 1-2 participants
 
-function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { meetingCode: string; meetingName: string }) {
+interface MeetingRoomContentProps {
+  meetingCode: string;
+  meetingName: string;
+  isHost: boolean;
+  hostIdentity: string;
+}
+
+function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName, isHost, hostIdentity: initialHostIdentity }: MeetingRoomContentProps) {
   const room = useRoomContext();
   const participants = useParticipants();
+  const { localParticipant } = useLocalParticipant();
   const { accentColor } = useAccentColor();
   const [showChat, setShowChat] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showMeetingInfo, setShowMeetingInfo] = useState(false);
   const [meetingName, setMeetingName] = useState(initialMeetingName);
+  const [hostIdentity, setHostIdentity] = useState(initialHostIdentity);
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState(initialMeetingName);
   const [copied, setCopied] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const meetingInfoRef = useRef<HTMLDivElement>(null);
   const lastBitrateRef = useRef<number | null>(null);
   const hasSetInitialMetadata = useRef(false);
+  const hasSetRoomMetadata = useRef(false);
+  const encoderRef = useRef(new TextEncoder());
+  const decoderRef = useRef(new TextDecoder());
 
   const tracks = useTracks(
     [
@@ -212,31 +258,100 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
     { onlySubscribed: false }
   );
 
-  // Set accent color in participant metadata when joining
+  // Set participant metadata when joining
   useEffect(() => {
     if (hasSetInitialMetadata.current) return;
+    if (room.state !== "connected") return;
     
-    const setInitialMetadata = async () => {
-      // Wait for room to be connected
-      if (room.state !== "connected") {
-        return;
-      }
+    const setMetadata = async () => {
+      if (hasSetInitialMetadata.current) return;
       
       try {
-        const currentMetadata = room.localParticipant.metadata 
-          ? JSON.parse(room.localParticipant.metadata) 
-          : {};
-        const newMetadata = { ...currentMetadata, accentColor };
-        await room.localParticipant.setMetadata(JSON.stringify(newMetadata));
+        // Set participant metadata (accent color and host status)
+        const participantMetadata = { 
+          accentColor,
+          ...(isHost ? { isHost: true } : {})
+        };
+        await room.localParticipant.setMetadata(JSON.stringify(participantMetadata));
         hasSetInitialMetadata.current = true;
-        console.log("Set accent color metadata:", accentColor);
       } catch (error) {
-        console.error("Failed to set initial accent color metadata:", error);
+        console.error("Failed to set participant metadata:", error);
       }
     };
     
-    setInitialMetadata();
-  }, [room, room.state, room.localParticipant, accentColor]);
+    setMetadata();
+  }, [room, room.state, room.localParticipant, accentColor, isHost]);
+
+  // Host sets room metadata via server API with retry
+  useEffect(() => {
+    if (!isHost || hasSetRoomMetadata.current) return;
+    if (room.state !== "connected") return;
+    
+    const setRoomMetadata = async (retryCount = 0) => {
+      if (hasSetRoomMetadata.current) return;
+      
+      try {
+        const response = await fetch("/api/meeting", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomName: meetingCode,
+            meetingName: initialMeetingName,
+            hostIdentity: room.localParticipant.identity,
+          }),
+        });
+        
+        if (response.ok) {
+          hasSetRoomMetadata.current = true;
+          console.log("Room metadata set:", { meetingName: initialMeetingName, hostIdentity: room.localParticipant.identity });
+        } else if (retryCount < 3) {
+          // Retry after a short delay if the room might not be ready yet
+          console.log("Retrying room metadata set...", retryCount + 1);
+          setTimeout(() => setRoomMetadata(retryCount + 1), 1000);
+        }
+      } catch (error) {
+        console.error("Failed to set room metadata:", error);
+        if (retryCount < 3) {
+          setTimeout(() => setRoomMetadata(retryCount + 1), 1000);
+        }
+      }
+    };
+    
+    // Small initial delay to ensure room is fully created
+    const timeoutId = setTimeout(() => setRoomMetadata(), 500);
+    return () => clearTimeout(timeoutId);
+  }, [room, room.state, room.localParticipant, isHost, initialMeetingName, meetingCode]);
+
+  // Listen for room metadata updates (for participants to get meeting info)
+  useEffect(() => {
+    if (room.state !== "connected") return;
+    
+    const handleMetadataChanged = () => {
+      if (room.metadata) {
+        try {
+          const metadata = JSON.parse(room.metadata);
+          if (metadata.meetingName && metadata.meetingName !== meetingName) {
+            setMeetingName(metadata.meetingName);
+            setTempName(metadata.meetingName);
+          }
+          if (metadata.hostIdentity && metadata.hostIdentity !== hostIdentity) {
+            setHostIdentity(metadata.hostIdentity);
+          }
+        } catch {
+          // Invalid JSON, ignore
+        }
+      }
+    };
+    
+    // Check initial room metadata
+    handleMetadataChanged();
+    
+    // Listen for updates
+    room.on("roomMetadataChanged", handleMetadataChanged);
+    return () => {
+      room.off("roomMetadataChanged", handleMetadataChanged);
+    };
+  }, [room, room.state, room.metadata, meetingName, hostIdentity]);
 
   // Dynamic bitrate adjustment based on participant count
   // 1-2 participants: high bitrate (4 Mbps) for better quality
@@ -278,6 +393,59 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
     return () => clearInterval(interval);
   }, []);
 
+  // Chat message handling - always active regardless of panel visibility
+  const handleDataReceived = useCallback(
+    (payload: Uint8Array, participant: { identity: string; name?: string } | undefined) => {
+      try {
+        const data = JSON.parse(decoderRef.current.decode(payload));
+        if (data.type === "chat") {
+          const newMessage: ChatMessage = {
+            id: `${Date.now()}-${Math.random()}`,
+            sender: participant?.name || participant?.identity || "Unknown",
+            senderIdentity: participant?.identity || "unknown",
+            message: data.message,
+            timestamp: new Date(),
+          };
+          setChatMessages((prev) => [...prev, newMessage]);
+        }
+      } catch (e) {
+        console.error("Error parsing chat message:", e);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    room.on(RoomEvent.DataReceived, handleDataReceived);
+    return () => {
+      room.off(RoomEvent.DataReceived, handleDataReceived);
+    };
+  }, [room, handleDataReceived]);
+
+  const handleSendChatMessage = useCallback(async (message: string) => {
+    if (!message.trim()) return;
+
+    const data = JSON.stringify({
+      type: "chat",
+      message: message.trim(),
+    });
+
+    // Add message locally
+    const newMessage: ChatMessage = {
+      id: `${Date.now()}-${Math.random()}`,
+      sender: localParticipant.name || localParticipant.identity,
+      senderIdentity: localParticipant.identity,
+      message: message.trim(),
+      timestamp: new Date(),
+    };
+    setChatMessages((prev) => [...prev, newMessage]);
+
+    // Send to all participants
+    await localParticipant.publishData(encoderRef.current.encode(data), {
+      reliable: true,
+    });
+  }, [localParticipant]);
+
   // Click outside handler for meeting info popup
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -314,9 +482,26 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
     }
   };
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     setMeetingName(tempName);
     setEditingName(false);
+    
+    // Update room metadata via server API if host
+    if (isHost && room.state === "connected") {
+      try {
+        await fetch("/api/meeting", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomName: meetingCode,
+            meetingName: tempName,
+            hostIdentity: hostIdentity,
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to update room metadata:", error);
+      }
+    }
   };
 
   const handleCancelEdit = () => {
@@ -364,7 +549,7 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
                     <label className="text-white/50 text-xs font-medium mb-2 block">
                       Meeting name
                     </label>
-                    {editingName ? (
+                    {isHost && editingName ? (
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
@@ -391,7 +576,7 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
                           <X className="w-4 h-4" />
                         </button>
                       </div>
-                    ) : (
+                    ) : isHost ? (
                       <button
                         onClick={() => {
                           setTempName(meetingName);
@@ -401,6 +586,10 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
                       >
                         {meetingName || "Add meeting name..."}
                       </button>
+                    ) : (
+                      <div className="w-full text-left text-white/70 text-sm px-3 py-2 rounded-lg bg-[#1a1a1a]">
+                        {meetingName || "No name set"}
+                      </div>
                     )}
                   </div>
 
@@ -458,8 +647,8 @@ function MeetingRoomContent({ meetingCode, meetingName: initialMeetingName }: { 
             >
               {/* Panel Content */}
               <div className="flex-1 overflow-hidden min-w-80">
-                {showParticipants && <ParticipantsList />}
-                {showChat && <ChatPanel />}
+                {showParticipants && <ParticipantsList hostIdentity={hostIdentity} />}
+                {showChat && <ChatPanel messages={chatMessages} onSendMessage={handleSendChatMessage} />}
               </div>
             </motion.div>
           )}

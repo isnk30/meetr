@@ -26,6 +26,7 @@ interface DeviceInfo {
 interface PreJoinScreenProps {
   meetingCode: string;
   isNewMeeting?: boolean;
+  existingMeetingName?: string;
   onJoin: (name: string, audioEnabled: boolean, videoEnabled: boolean, meetingName?: string) => void;
   onBack: () => void;
 }
@@ -33,6 +34,7 @@ interface PreJoinScreenProps {
 export default function PreJoinScreen({
   meetingCode,
   isNewMeeting = false,
+  existingMeetingName,
   onJoin,
   onBack,
 }: PreJoinScreenProps) {
@@ -371,8 +373,8 @@ export default function PreJoinScreen({
         </div>
       </motion.button>
 
-      {/* Meeting Name Input (centered, only for new meetings) */}
-      {isNewMeeting && (
+      {/* Meeting Name - Input for host (new meeting), read-only display for participants */}
+      {isNewMeeting ? (
         <input
           type="text"
           value={meetingName}
@@ -381,7 +383,11 @@ export default function PreJoinScreen({
           maxLength={50}
           className="absolute top-4 sm:top-5 left-1/2 -translate-x-1/2 w-48 sm:w-64 h-10 px-3 bg-transparent border border-transparent rounded-lg text-white placeholder-white/20 focus:outline-none focus:bg-[#232323] focus:border-white/20 transition-colors text-base text-center"
         />
-      )}
+      ) : existingMeetingName ? (
+        <div className="absolute top-4 sm:top-5 left-1/2 -translate-x-1/2 h-10 px-3 flex items-center">
+          <span className="text-white/50 text-base">{existingMeetingName}</span>
+        </div>
+      ) : null}
 
       {/* Meeting Code */}
       <div className="flex items-center gap-1 mb-4 sm:mb-6">
